@@ -1,4 +1,4 @@
-import { Client } from "discord.js";
+import {Client} from "discord.js";
 
 const token =
   process.env.DISCORD_TOKEN || require("../authorization").discord.token;

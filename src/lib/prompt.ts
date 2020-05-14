@@ -1,22 +1,16 @@
-/**
- * Utility kit to prompt users
- * Used in verification flow
- */
-
-import { addOneTimeMessageHandler } from "./message";
-import { DMChannel, Message } from "discord.js";
+import {addOneTimeMessageHandler} from "./message";
+import {DMChannel, Message} from "discord.js";
 
 /**
- * Asks a user in their respective DMChannel
- * @param question Question to ask
- * @param channel Channel to ask in ()
- * @returns The response message
+ * Ask a question to the user.
+ * @param question: The question to ask the user
+ * @param channel: The user's DM.
  */
-function ask(question: string, channel: DMChannel) {
+export function ask(question: string, channel: DMChannel) {
   channel.send(question);
   return new Promise<Message>(resolve => {
     addOneTimeMessageHandler(message => {
-      if (channel.id !== message.channel.id) return false;
+      //if (channel.id !== message.channel.id) return false;
       resolve(message);
       return true;
     });
@@ -24,18 +18,28 @@ function ask(question: string, channel: DMChannel) {
 }
 
 /**
- * Same as ask, but returns the response string
- * @param question Question to ask
- * @param channel Channel to ask in ()
+ * A function to call ask() in order to return the response string
+ * @param question: The question to ask the user
+ * @param channel: The channel to ask the user in
  */
 export function askString(question: string, channel: DMChannel) {
   return ask(question, channel).then(message => message.content);
 }
 
+//validator definition
+//returns true if valid input; false if not.
 type ValidatorFunction = (
   message: string
 ) => Promise<boolean | string> | string | boolean;
-function questionValidate(
+
+/**
+ * A way to automatically validate the user's input.
+ * @param question: The question asked
+ * @param channel: The user's DM
+ * @param validate: The ValidatorFunction defined above
+ * @param failureMessage: Message to send the user in case of an invalid input.
+ */
+export function questionValidate(
   question: string,
   channel: DMChannel,
   validate: ValidatorFunction,
@@ -57,21 +61,25 @@ function questionValidate(
   });
 }
 
-function choose(question: string, channel: DMChannel, options: string[][]) {
+/**
+ * For when the user must select between predefined answer choices. 
+ * @param question: The question to ask the user.
+ * @param channel: The user's DMs.
+ * @param options: A string of strings that contains the options the user must select from.
+ */
+export function choose(question: string, channel: DMChannel, options: string[][]) {
+  
+  //call the validation function on the user's answer.
   return questionValidate(
     question,
     channel,
     response => {
-      options = options.map(c => c.map(a => a.toUpperCase()));
-
       let index = options.findIndex(opt =>
         opt.includes(response.toUpperCase())
       );
       if (index < 0) return false;
       return options[index][0];
     },
-    "I'm not sure I understand what you mean"
+    "I can\'t quite understand what you said. Try again, please."
   );
 }
-
-export { ask, askString as question, questionValidate, choose };

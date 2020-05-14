@@ -1,77 +1,56 @@
 import { Message } from "discord.js";
 
-/**
- * Super simple event loop for message handling
- */
-
+//type definition
 type MessageHandler = (message: Message) => Promise<boolean> | boolean;
 
+//use a simple array stack implementation for the message handlers.
 const handlers: MessageHandler[] = [];
 
 /**
- * Add a message handler to the stack. Message handling is first-come, first-serve. In order to prevent accidents, handler functions must return true if they act upon a message.
- * This can easily be done by having conditional returns at the top of the function, and returning true at the end
+ * Adds a message handler onto the stack.
+ * @param handler: The MessageHandler object to be added.
  */
-function addMessageHandler(handler: MessageHandler) {
-  return handlers.push(handler) - 1;
+function addMessageHandler(handler: MessageHandler){
+    return handlers.push(handler) -1;
 }
 
 /**
- * Remove a message handler
+ * Remove a message handler from the stack and replace it with an empty function.
+ * @param index The index of the handler to be removed.
  */
-function removeMessageHandler(index: number) {
-  // Overwrite with empty function, so as to preserve handler numbers
-  handlers[index] = () => false;
-}
-/**
- * Add a one time message handler to the stack. Message handling is first-come, first-serve. In order to prevent accidents, handler functions must return true if they act upon a message.
- * This can easily be done by having conditional returns at the top of the function, and returning true at the end
- */
-function addOneTimeMessageHandler(handler: MessageHandler) {
-  let index = addMessageHandler(async function(message: Message) {
-    let res = await handler(message);
-    if (res) removeMessageHandler(index);
-    return res;
-  });
+function removeMessageHandler(index: number){
+    handlers[index] = () => false;
 }
 
 /**
- * Handles a message
- * @param {Message} message The message to process
- * @return {Function} The function that handled this message
+ * Adds a single-use handler to the message handler stack.
+ * @param handler: The handler to be added, used, then removed.
  */
-async function handleMessage(message: Message) {
-  let i = 0;
-  while (!(await handlers[i++](message)) && i < handlers.length) {
-    // console.log(`Handler passed`, handlers[i]);
-  }
-  return handlers[i];
+function addOneTimeMessageHandler(handler: MessageHandler){
+    let index = addMessageHandler(async function(message: Message) {
+        let res = await handler(message);
+        if(res) removeMessageHandler(index);
+        return res;
+    });
+    return index;
 }
 
-type CommandHandler = (
-  args: string[],
-  message: Message
-) => boolean | Promise<boolean>;
-
 /**
- * Syntactic Sugar around addMessageHandler() for commands
- * @param name Name of the command (event, or team, or whatever)
- * @param handler A function to handle the command innvocation
+ * A function to handle each message passed into the bot.
+ * @param message: A message from the user.
  */
-function addCommand(name: string, handler: CommandHandler) {
-  addMessageHandler(async message => {
-    if (message.content.toLowerCase().startsWith(`/${name}`)) {
-      let [, ...args] = message.content.split(" ");
-      return handler(args, message);
-    } else {
-      return false;
+async function handleMessage(message: Message){
+    let i=0;
+    while(!(await handlers[i++](message)) && i < handlers.length) {
+        console.log(`Cycling handler `, handlers[i]);
     }
-  });
+    return handlers[i];
 }
 
-export {
-  addMessageHandler,
-  addOneTimeMessageHandler,
-  handleMessage,
-  addCommand
-};
+//create Command handler type
+type CommandHandler = (
+    args: string[],
+    message: Message
+) => Promise<boolean> | boolean;
+
+export{addMessageHandler, removeMessageHandler, addOneTimeMessageHandler, handleMessage};
